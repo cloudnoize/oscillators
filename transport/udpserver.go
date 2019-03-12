@@ -3,10 +3,12 @@ package transport
 import (
 	"net"
 
+	"github.com/cloudnoize/conv"
+
 	"github.com/cloudnoize/oscillators/oscillators"
 )
 
-type Client struct {
+type ClientCon struct {
 	oscillators.Oscillator
 	addr net.Addr
 }
@@ -20,34 +22,39 @@ func ServeUdp(addr string) {
 
 	for {
 		var b [1024]byte
-		n, add, e := conn.ReadFrom(b[:])
+		_, add, e := conn.ReadFrom(b[:])
+		println("Init...")
 		if e != nil {
 			continue
 		}
-		go srv(&Client{Oscillator: oscillators.NewSinOsc(44100, 440), addr: add}, conn)
+		cc := &ClientCon{Oscillator: oscillators.NewSinOsc(44100, 440), addr: add}
+		go srv(cc, conn)
+		println("Ready, send me signal to start")
+		conn.ReadFrom(b[:])
 	}
 }
 
-func srv(cl *Client, pc net.PacketConn) {
+func srv(cl *ClientCon, pc net.PacketConn) {
 	cont := true
 	defer func() {
 		cont = false
+		cl.Close()
 	}()
 	//Writer
 	go func() {
 		var b [1024]byte
 		for cont {
-			s := cl.GetSample()
-			//Convert
-			//Fill buffer
-			//Then write
+			for i := 0; i < len(b)/4; i++ {
+				s := cl.GetSample()
+				conv.Float32ToBytes(s, b[:], i*4)
+			}
 			pc.WriteTo(b[:], cl.addr)
 		}
 	}()
 	//Reader
 	var b [1024]byte
 	for {
-		n, addr, e := pc.ReadFrom(b[:])
+		_, _, e := pc.ReadFrom(b[:])
 		if e != nil {
 			return
 		}
