@@ -63,11 +63,13 @@ func main() {
 		return
 	}
 	go func() {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Enter signal: ")
-		text, _ := reader.ReadString('\n')
-		println("sending ", text)
-		conn.Write([]byte(text))
+		for {
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Enter signal: ")
+			text, _ := reader.ReadString('\n')
+			println("sending ", text)
+			conn.Write([]byte(text))
+		}
 	}()
 
 	si := &streamImp{q: locklessq.New(int32(44100))}

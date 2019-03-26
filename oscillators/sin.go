@@ -15,7 +15,7 @@ type SinOsc struct {
 }
 
 func NewSinOsc(sr, freq uint) Oscillator {
-	so := SinOsc{sr: sr, freq: freq, step: CalculateStep(freq, sr), ch: make(chan float32, sr), cont: true}
+	so := SinOsc{sr: sr, freq: freq, step: CalculateStep(freq, sr), ch: make(chan float32, 100), cont: true}
 	go so.sampleGen()
 	return &so
 }
@@ -48,7 +48,9 @@ func (s *SinOsc) Close() {
 }
 
 func (s *SinOsc) SetFreq(freq uint) {
+	println("Setting freq ", freq)
 	s.freq = freq
+	s.step = CalculateStep(freq, s.sr)
 }
 
 func CalculateStep(freq, sr uint) float64 {
