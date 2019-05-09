@@ -2,7 +2,6 @@ package oscillators
 
 import (
 	"math"
-	"time"
 )
 
 type SinOsc struct {
@@ -10,13 +9,11 @@ type SinOsc struct {
 	step  float64
 	freq  uint
 	index uint
-	ch    chan float32
 	cont  bool
 }
 
 func NewSinOsc(sr, freq uint) Oscillator {
-	so := SinOsc{sr: sr, freq: freq, step: CalculateStep(freq, sr), ch: make(chan float32, 100), cont: true}
-	go so.sampleGen()
+	so := SinOsc{sr: sr, freq: freq, step: CalculateStep(freq, sr), cont: true}
 	return &so
 }
 
@@ -25,21 +22,9 @@ func (s *SinOsc) calculateSample() float32 {
 	s.index = (s.index + 1) % s.sr
 	return float32(ret)
 }
-func (s *SinOsc) sampleGen() {
-	dur := time.Duration(uint(time.Second) / (s.sr + 1250))
-	println("tikcer dur is ", dur.String())
-	t := time.NewTicker(dur)
-	s.ch <- s.calculateSample()
-	for range t.C {
-		s.ch <- s.calculateSample()
-		if !s.cont {
-			break
-		}
-	}
-}
 
 func (s *SinOsc) GetSample() float32 {
-	return <-s.ch
+	return s.calculateSample()
 }
 
 func (s *SinOsc) Close() {

@@ -35,7 +35,7 @@ func TestCLock(t *testing.T) {
 
 	start := time.Now()
 
-	for i := 0; i < 441000; i++ {
+	for i := 0; i < 44100; i++ {
 		so.GetSample()
 	}
 
