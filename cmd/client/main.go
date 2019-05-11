@@ -18,7 +18,8 @@ import (
 )
 
 type streamImp struct {
-	q       *locklessq.Q
+	q32     *locklessq.Qfloat32
+	q16     *locklessq.Qint16
 	bitrate int
 	frames  int
 	test    bool
@@ -27,7 +28,7 @@ type streamImp struct {
 	start   time.Time
 }
 
-func (s *streamImp) Cbb(inputBuffer, outputBuffer unsafe.Pointer, frames uint64) {
+func (s *streamImp) CallBack(inputBuffer, outputBuffer unsafe.Pointer, frames uint64) {
 	if s.bitrate == 16 {
 		s.out16bit(outputBuffer, frames)
 		return
@@ -39,7 +40,7 @@ func (s *streamImp) out32bit(outputBuffer unsafe.Pointer, frames uint64) {
 	ob := (*[1024]float32)(outputBuffer)
 	errNum := 0
 	for i := 0; i < s.frames; i++ {
-		val, ok := s.q.Pop()
+		val, ok := s.q32.Pop()
 		if ok {
 			if !s.test {
 				(*ob)[i] = val
@@ -75,7 +76,7 @@ func (s *streamImp) out32bit(outputBuffer unsafe.Pointer, frames uint64) {
 func (s *streamImp) out16bit(outputBuffer unsafe.Pointer, frames uint64) {
 	ob := (*[1024]int16)(outputBuffer)
 	for i := 0; i < s.frames; i++ {
-		val, ok := s.q.Pop()
+		val, ok := s.q16.Pop()
 		if ok {
 			if !s.test {
 				(*ob)[i] = int16(val)
@@ -102,14 +103,14 @@ func (s *streamImp) Write(b []byte) (n int, err error) {
 func (this *streamImp) Write32float(b []byte) {
 	for i := 0; i < len(b)/4; i++ {
 		f := conv.BytesToFloat32(b, i*4)
-		this.q.Insert(f)
+		this.q32.Insert(f)
 	}
 }
 
 func (this *streamImp) Write16int(b []byte) {
 	for i := 0; i < len(b)/2; i++ {
 		s := conv.BytesToint16(b, i*2)
-		this.q.Insert(float32(s))
+		this.q16.Insert(s)
 	}
 }
 
@@ -157,9 +158,9 @@ func main() {
 		return
 	}
 
-	si := &streamImp{q: locklessq.New(int32(44100)), bitrate: bitrate, frames: frames, test: test}
+	si := &streamImp{q32: locklessq.NewQfloat32(int32(44100)), q16: locklessq.NewQint16(int32(44100)), bitrate: bitrate, frames: frames, test: test}
 
-	pa.Cba[0] = si
+	pa.CbStream = si
 
 	pa.Initialize()
 	sf := pa.Float32
